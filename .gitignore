@@ -6,3 +6,5 @@ __pycache__/
 .venv/
 pull-logs/
 **/pull-logs/
+vendor/**/.env
+vendor/**/pull-logs/

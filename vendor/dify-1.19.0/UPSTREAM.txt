@@ -1,0 +1,5 @@
+Source: https://github.com/langgenius/dify
+Tag: 1.19.0
+Commit: 8e689e868b63b6dd2b449d0eb568ca5cc7127759
+Imported directory: docker/
+Do not add runtime .env or secrets to this vendor directory.
