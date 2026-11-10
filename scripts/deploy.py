@@ -56,7 +56,7 @@ def sandbox():
 
 # Operates on the VM's writable filesystem only, never modifies published cache.
 SETUP = r'''
-import base64,crypt,hashlib,json,os,pathlib,secrets,shutil,subprocess
+import base64,json,os,pathlib,secrets,subprocess
 d=json.loads(base64.b64decode(os.environ["DIFY_SETUP"]).decode())
 root=pathlib.Path("/opt/dify/docker")
 env=root/".env"
@@ -74,9 +74,7 @@ text=template.read_text()
 assert "server {\n" in text
 text=text.replace("server {\n", "server {\n    auth_basic \"Dify evaluation\";\n    auth_basic_user_file /etc/nginx/conf.d/.htpasswd;\n", 1)
 template.write_text(text)
-import crypt
-salt="$6$"+secrets.token_urlsafe(12)
-digest=crypt.crypt(d["edge_password"],salt)
+digest=subprocess.run(["openssl","passwd","-6","-stdin"],input=d["edge_password"],capture_output=True,text=True,check=True).stdout.strip()
 (root/"nginx/conf.d/.htpasswd").write_text("dify:"+digest+"\n")
 (root/"nginx/conf.d/.htpasswd").chmod(0o640)
 print("CONFIG_PREPARED protected_nginx=on")
@@ -153,7 +151,7 @@ def main():
             timeout=1200),flush=True)
         print("SERVICES",remote(sb,"cd /opt/dify/docker && docker compose ps --all",timeout=90),flush=True)
         print("WEB_HTTP",remote(sb,
-            "curl -s -o /dev/null -w '%{http_code}' --max-time 20 http://127.0.0.1/install",
+            "python3 -c 'import urllib.request,urllib.error;u=\"http://127.0.0.1/install\";print(urllib.request.urlopen(u, timeout=20).status)'",
             timeout=30),flush=True)
         print("TUNNEL",sb.tunnels().get(80),flush=True)
         print("EDGE_USER=dify\nEDGE_PASSWORD="+d["edge_password"],flush=True)
