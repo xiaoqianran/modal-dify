@@ -76,7 +76,7 @@ text=text.replace("server {\n", "server {\n    auth_basic \"Dify evaluation\";\n
 template.write_text(text)
 digest=subprocess.run(["openssl","passwd","-6","-stdin"],input=d["edge_password"],capture_output=True,text=True,check=True).stdout.strip()
 (root/"nginx/conf.d/.htpasswd").write_text("dify:"+digest+"\n")
-(root/"nginx/conf.d/.htpasswd").chmod(0o640)
+(root/"nginx/conf.d/.htpasswd").chmod(0o644)
 print("CONFIG_PREPARED protected_nginx=on")
 '''
 
@@ -151,8 +151,8 @@ def main():
             timeout=1200),flush=True)
         print("SERVICES",remote(sb,"cd /opt/dify/docker && docker compose ps --all",timeout=90),flush=True)
         print("WEB_HTTP",remote(sb,
-            "python3 -c 'import urllib.request,urllib.error;u=\"http://127.0.0.1/install\";print(urllib.request.urlopen(u, timeout=20).status)'",
-            timeout=30),flush=True)
+            "python3 -c 'import urllib.request,base64;u=\"http://127.0.0.1/install\";r=urllib.request.Request(u,headers={\"Authorization\":\"Basic \"+base64.b64encode(\"dify:\".encode()+__import__(\"os\").environ[\"DIFY_EDGE_PASSWORD\"].encode()).decode()});print(urllib.request.urlopen(r,timeout=20).status)'",
+            timeout=30,env={"DIFY_EDGE_PASSWORD":d["edge_password"]}),flush=True)
         print("TUNNEL",sb.tunnels().get(80),flush=True)
         print("EDGE_USER=dify\nEDGE_PASSWORD="+d["edge_password"],flush=True)
         print("WARNING=EVALUATION_ONLY, DATA_NOT_PERSISTENT_ACROSS_VM_DESTRUCTION",flush=True)
