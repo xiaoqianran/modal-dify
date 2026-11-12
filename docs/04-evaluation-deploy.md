@@ -61,3 +61,10 @@ Docker 引擎的主机端口仅有 Modal encrypted_ports=[80] 暴露在 Tunnel�
 ## 插件存储目录权限
 
 `plugin_daemon` 容器以 UID/GID `1001:1001` 运行，并将宿主 `volumes/plugin_daemon` 绑定到 `/app/storage`。Docker 自动创建缺失目录时可能采用 `root:root`、`755`，使插件安装无法创建 `/app/storage/assets`。部署脚本在启动 Compose 前创建该目录并设为 `1001:1001`；不需要 `777`，也不递归更改已有插件文件属主。
+
+## 默认内存调整（2026-11-12）
+
+新建 Modal Sandbox VM 的默认内存从 16 GiB 改为 8 GiB，CPU 仍为 4 vCPU。
+修改仅影响新创建的 VM；`start` 复用已运行实例时不会调整其规格。
+现有实例包含用户注册信息、工作流及插件配置，**不得为调整内存直接销毁**，
+除非先完成并验证数据备份及迁移恢复。8 GiB 能否承载实际负载仍需新实例实测。

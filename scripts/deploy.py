@@ -157,7 +157,7 @@ def main():
     d=credentials()
     sb=modal.Sandbox.create("sleep","86300",app=app,name=NAME,
          image=modal.Image.from_name(IMAGE_NAME),
-         runtime="vm",cpu=4,memory=16384,timeout=86400,
+         runtime="vm",cpu=4,memory=8192,timeout=86400,
          encrypted_ports=[80])
     print("CREATED_VM",sb.object_id,flush=True)
     try:
