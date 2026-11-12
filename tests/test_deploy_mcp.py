@@ -47,6 +47,9 @@ class TestMcpExposure(unittest.TestCase):
                          '/mcp/server/test-code/mcp/extra', '/mcp/server/test-code/mcpXYZ'):
                 self.assertIsNone(pattern.fullmatch(path))
             self.assertNotIn('edge_password=', (root / '.env').read_text())
+            plugin_storage = root / 'volumes/plugin_daemon'
+            self.assertTrue(plugin_storage.is_dir())
+            self.assertEqual((plugin_storage.stat().st_uid, plugin_storage.stat().st_gid), (1001, 1001))
 
     def test_endpoint_hint_uses_single_tunnel(self):
         spec = importlib.util.spec_from_file_location('deploy', DEPLOY)

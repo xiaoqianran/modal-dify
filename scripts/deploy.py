@@ -75,6 +75,10 @@ values["EXPOSE_NGINX_SSL_PORT"]="443"
 values["EXPOSE_PLUGIN_DEBUGGING_PORT"]="5003"
 env.write_text("\n".join(f"{k}={v}" for k,v in values.items())+"\n")
 env.chmod(0o600)
+# Docker creates missing bind-mount directories as root; plugin_daemon runs as UID 1001.
+plugin_storage=root/"volumes/plugin_daemon"
+plugin_storage.mkdir(parents=True,exist_ok=True)
+os.chown(plugin_storage,1001,1001)
 template=root/"nginx/conf.d/default.conf.template"
 text=template.read_text()
 assert "server {\n" in text

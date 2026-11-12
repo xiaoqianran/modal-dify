@@ -57,3 +57,7 @@ Docker 引擎的主机端口仅有 Modal encrypted_ports=[80] 暴露在 Tunnel�
 **安全约束：** 精确的 `/mcp/server/<server_code>/mcp` 路径无需额外 Basic Auth，但 Dify 生成的 server code 是访问凭据；任何持有该链接的人都可能调用暴露的工具。勿公开链接或授权高危工具。其余路径依然要求 Basic Auth。此改动只应用于新创建的 VM；已经启动且由 `start` 复用的 VM 不会被覆盖。
 
 **生命周期：** VM 停止后 MCP 同时失效；新 VM 的 Tunnel URL 可能变化，需要同步更新 AgentDock。当前不具备跨 VM 数据持久化保证，尚未执行真实 MCP 端到端验收。
+
+## 插件存储目录权限
+
+`plugin_daemon` 容器以 UID/GID `1001:1001` 运行，并将宿主 `volumes/plugin_daemon` 绑定到 `/app/storage`。Docker 自动创建缺失目录时可能采用 `root:root`、`755`，使插件安装无法创建 `/app/storage/assets`。部署脚本在启动 Compose 前创建该目录并设为 `1001:1001`；不需要 `777`，也不递归更改已有插件文件属主。
