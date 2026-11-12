@@ -54,6 +54,12 @@ def remote(sb,cmd,timeout=300,env=None):
 def sandbox():
     return modal.Sandbox.from_name(APP,NAME)
 
+
+def print_endpoints(sb):
+    url = sb.tunnels()[80].url.rstrip("/")
+    print("DIFY_URL", url, flush=True)
+    print("MCP_URL_FORMAT", f"{url}/mcp/server/<server_code>/mcp", flush=True)
+
 # Operates on the VM's writable filesystem only, never modifies published cache.
 SETUP = r'''
 import base64,json,os,pathlib,secrets,subprocess
@@ -73,6 +79,18 @@ template=root/"nginx/conf.d/default.conf.template"
 text=template.read_text()
 assert "server {\n" in text
 text=text.replace("server {\n", "server {\n    auth_basic \"Dify evaluation\";\n    auth_basic_user_file /etc/nginx/conf.d/.htpasswd;\n", 1)
+# Dify's generated MCP server code is the access credential. Keep the
+# console protected by Basic Auth, but let native MCP clients authenticate
+# through the Dify MCP endpoint without an extra browser-only challenge.
+mcp_location = """    location ~ ^/mcp/server/[^/]+/mcp/?$ {
+        auth_basic off;
+        set $api_upstream api:5001;
+        proxy_pass http://$api_upstream;
+        include proxy.conf;
+    }
+"""
+assert "    location /mcp {" in text
+text=text.replace("    location /mcp {", mcp_location + "\n    location /mcp {", 1)
 template.write_text(text)
 digest=subprocess.run(["openssl","passwd","-6","-stdin"],input=d["edge_password"],capture_output=True,text=True,check=True).stdout.strip()
 (root/"nginx/conf.d/.htpasswd").write_text("dify:"+digest+"\n")
@@ -114,7 +132,7 @@ def main():
         sb=sandbox()
         print("VM",sb.object_id,"poll",sb.poll())
         if sb.poll() is None:
-            print("TUNNEL",sb.tunnels().get(80))
+            print_endpoints(sb)
             try:print(remote(sb,"cd /opt/dify/docker && docker compose ps --all",timeout=60))
             except Exception as e:print("STATUS_ERROR",str(e))
         return
@@ -128,7 +146,7 @@ def main():
         sb=sandbox()
         if sb.poll() is None:
             print("REUSE_VM",sb.object_id,flush=True)
-            print("TUNNEL",sb.tunnels().get(80),flush=True)
+            print_endpoints(sb)
             return
     except modal.exception.NotFoundError:
         pass
@@ -153,7 +171,7 @@ def main():
         print("WEB_HTTP",remote(sb,
             "python3 -c 'import urllib.request,base64;u=\"http://127.0.0.1/install\";r=urllib.request.Request(u,headers={\"Authorization\":\"Basic \"+base64.b64encode(\"dify:\".encode()+__import__(\"os\").environ[\"DIFY_EDGE_PASSWORD\"].encode()).decode()});print(urllib.request.urlopen(r,timeout=20).status)'",
             timeout=30,env={"DIFY_EDGE_PASSWORD":d["edge_password"]}),flush=True)
-        print("TUNNEL",sb.tunnels().get(80),flush=True)
+        print_endpoints(sb)
         print("EDGE_USER=dify\nEDGE_PASSWORD="+d["edge_password"],flush=True)
         print("WARNING=EVALUATION_ONLY, DATA_NOT_PERSISTENT_ACROSS_VM_DESTRUCTION",flush=True)
     except Exception:

@@ -44,3 +44,16 @@
 Docker 引擎的主机端口仅有 Modal encrypted_ports=[80] 暴露在 Tunnel，内部端口不应额外公开。
 
 当前 Sandbox 最长 86400s，运行期间会持续产生 Modal 费用；Named Image 自身无需持续 VM 计算。
+
+## MCP 接入（与 Dify 同生命周期）
+
+官方 Compose 已有 `/mcp` 到 `api:5001` 的转发。`scripts/deploy.py` 在新 VM 的可写层为原生 MCP 工具调用端点取消 Nginx Basic Auth，其他路由保持全站 Basic Auth；Modal Tunnel 仍只暴露 80 端口，不增加容器或额外公网服务。
+
+1. 通过 `scripts/deploy.py start` 启动新评估实例；`status` 查看 `DIFY_URL` 与 `MCP_URL_FORMAT`。
+2. 登录 Dify，发布工作流，开启该应用的 MCP Server，并复制 Dify 提供的实际 MCP URL。
+3. 在 CNB AgentDock 的动态 MCP 配置中使用该 URL，传输协议选择 Streamable HTTP。
+4. 验证 `initialize`、`tools/list` 和一次无敏感副作用的 `tools/call`。
+
+**安全约束：** 精确的 `/mcp/server/<server_code>/mcp` 路径无需额外 Basic Auth，但 Dify 生成的 server code 是访问凭据；任何持有该链接的人都可能调用暴露的工具。勿公开链接或授权高危工具。其余路径依然要求 Basic Auth。此改动只应用于新创建的 VM；已经启动且由 `start` 复用的 VM 不会被覆盖。
+
+**生命周期：** VM 停止后 MCP 同时失效；新 VM 的 Tunnel URL 可能变化，需要同步更新 AgentDock。当前不具备跨 VM 数据持久化保证，尚未执行真实 MCP 端到端验收。
